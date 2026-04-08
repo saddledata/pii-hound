@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"cloud.google.com/go/storage"
+	"github.com/parquet-go/parquet-go"
 	"google.golang.org/api/iterator"
 )
 
@@ -57,7 +60,8 @@ func (s *GCSScanner) Scan(ctx context.Context, limit int, random bool, results c
 
 			key := attrs.Name
 			// Simple suffix check for MVP
-			if strings.HasSuffix(key, ".csv") || strings.HasSuffix(key, ".json") || strings.HasSuffix(key, ".jsonl") {
+			if strings.HasSuffix(key, ".csv") || strings.HasSuffix(key, ".json") || strings.HasSuffix(key, ".jsonl") ||
+				strings.HasSuffix(key, ".xlsx") || strings.HasSuffix(key, ".xlsm") || strings.HasSuffix(key, ".parquet") {
 				if err := s.scanObject(ctx, bucket, key, limit, random, results); err != nil {
 					fmt.Printf("Error scanning gs://%s/%s: %v\n", bucketName, key, err)
 				}
@@ -87,6 +91,27 @@ func (s *GCSScanner) scanObject(ctx context.Context, bucket *storage.BucketHandl
 		// Wrap in bufio to peek for array vs lines
 		br := bufio.NewReader(r)
 		return ScanJSONStreamFromReader(br, sourceName, limit, random, results)
+	} else if strings.HasSuffix(key, ".xlsx") || strings.HasSuffix(key, ".xlsm") {
+		return ScanExcelStream(r, sourceName, limit, random, results)
+	} else if strings.HasSuffix(key, ".parquet") {
+		// Parquet needs ReaderAt, so we download to a temp file
+		tmpFile, err := os.CreateTemp("", "piihound-*.parquet")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(tmpFile.Name())
+		defer tmpFile.Close()
+
+		if _, err := io.Copy(tmpFile, r); err != nil {
+			return err
+		}
+
+		stat, _ := tmpFile.Stat()
+		pf, err := parquet.OpenFile(tmpFile, stat.Size())
+		if err != nil {
+			return err
+		}
+		return ScanParquetFile(pf, sourceName, limit, random, results)
 	}
 
 	return nil

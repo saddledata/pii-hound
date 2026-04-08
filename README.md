@@ -8,13 +8,32 @@ It connects to your data sources, samples records (up to a configurable limit), 
 
 ## 🚀 Key Features
 
-*   **Multi-Source**: Support for PostgreSQL, MySQL, SQLite, AWS S3, and Google Cloud Storage.
-*   **File Support**: Scans CSV and JSON (Array and JSON Lines) formats.
+*   **Multi-Source**: Support for PostgreSQL, MySQL, Snowflake, BigQuery, SQLite, AWS S3, and Google Cloud Storage.
+*   **File Support**: Scans CSV, JSON (Array and JSON Lines), Excel (.xlsx, .xlsm), and Parquet formats.
+*   **Custom Rules**: Define your own PII and Secrets patterns using a simple YAML configuration with high-performance **Aho-Corasick** keyword matching.
 *   **Secrets Detection**: Sniffs out AWS Keys, GitHub Tokens, and Private Keys.
 *   **PII Detection**: Detects SSNs, Credit Cards (with Luhn validation), Emails, IP Addresses, and Phone Numbers.
 *   **CI/CD Ready**: Machine-readable JSON output and a `--fail-on-pii` flag to block risky deployments.
-*   **Random Sampling**: Use the `--random` flag to sample data from across your entire database, not just the first rows.
+*   **Intelligence**: High-performance **Reservoir Sampling** for large files and random database sampling.
 *   **Lightning Fast**: Concurrent, streaming architecture designed to handle gigabytes of data without high memory usage.
+
+---
+
+## 📥 Installation
+
+### macOS (Homebrew)
+```bash
+brew tap saddledata/homebrew-tap
+brew install pii-hound
+```
+
+### Docker
+```bash
+docker run --rm saddledata/pii-hound --help
+```
+
+### Binary Downloads
+Download the latest pre-compiled binaries for Linux, Windows, or macOS from the [Releases](https://github.com/saddledata/pii-hound/releases) page.
 
 ---
 
@@ -27,6 +46,12 @@ pii-hound scan "postgres://user:pass@localhost:5432/db?sslmode=disable"
 
 # MySQL
 pii-hound scan "mysql://user:pass@tcp(localhost:3306)/db"
+
+# Snowflake
+pii-hound scan "snowflake://user:pass@account/MY_DB/MY_SCHEMA?warehouse=COMPUTE_WH"
+
+# BigQuery
+pii-hound scan "bigquery://my-project/my_dataset"
 
 # SQLite
 pii-hound scan "./my-app.db"
@@ -43,17 +68,33 @@ pii-hound scan "gs://my-bucket/backups/*.json"
 
 ### Scan Local Files
 ```bash
-# Single CSV or JSON file
-pii-hound scan "./data/users.csv"
-
-# Directory with wildcard
-pii-hound scan "./data/*.json"
+# Scan multiple files (wildcards supported)
+pii-hound scan ./data/*.csv ./backups/*.xlsx ./logs/*.parquet
 ```
 
 ### CI/CD Integration
 Block your pipeline if PII is detected in your export folder:
 ```bash
 pii-hound scan "./exports/*.csv" --fail-on-pii
+```
+
+### Custom Rules
+Define proprietary PII patterns or sensitive keywords in a `rules.yaml` file:
+```yaml
+rules:
+  - name: "Internal Project ID"
+    type: "PII"
+    risk: "HIGH"
+    regex: "PRJ-[0-9]{5}"
+    heuristic: "project_id|proj_code"
+  - name: "Sensitive Keywords"
+    type: "Sensitive Keyword"
+    risk: "MEDIUM"
+    keywords: ["AcmeCorp", "SecretProjectX"]
+```
+Then run the scan with the `--rules` flag:
+```bash
+pii-hound scan ./data.csv --rules rules.yaml
 ```
 
 ---
@@ -63,9 +104,10 @@ pii-hound scan "./exports/*.csv" --fail-on-pii
 | Flag | Shorthand | Description |
 | :--- | :--- | :--- |
 | `--limit` | `-l` | Maximum rows/objects to sample per table/file (default: 1000). |
-| `--random` | | Sample rows randomly from databases instead of the first N rows. |
+| `--random` | | Sample rows randomly (uses Reservoir Sampling for files). |
 | `--json` | | Output report in machine-readable JSON format. |
 | `--fail-on-pii` | | Exit with code 1 if any PII or Secrets are detected. |
+| `--rules` | | Path to a YAML file containing custom PII rules. |
 
 ---
 
@@ -99,4 +141,4 @@ With Saddle Data, you can tag these columns once, and our **Execution Circuit Br
 
 ## 🤝 Contributing
 
-Pull requests are welcome! If you want to add a new detector (e.g., Passport numbers) or a new source connector (e.g., Snowflake), please open an issue first to discuss the changes.
+Pull requests are welcome! If you want to add a new detector (e.g., Passport numbers) or a new source connector (e.g., MongoDB), please open an issue first to discuss the changes.

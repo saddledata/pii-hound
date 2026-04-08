@@ -1,0 +1,10 @@
+rules:
+  - name: "Saddle Project ID"
+    type: "PII"
+    risk: "HIGH"
+    regex: "SDL-[0-9]{4}-[A-Z]{2}"
+    heuristic: "saddle_id|project_code"
+  - name: "Competitor Mention"
+    type: "Sensitive Keyword"
+    risk: "MEDIUM"
+    keywords: ["AcmeCorp", "Globex", "Initech", "Soylent Corp"]

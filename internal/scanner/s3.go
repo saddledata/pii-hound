@@ -5,11 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/parquet-go/parquet-go"
 )
 
 type S3Scanner struct {
@@ -59,7 +62,8 @@ func (s *S3Scanner) Scan(ctx context.Context, limit int, random bool, results ch
 			for _, obj := range page.Contents {
 				key := *obj.Key
 				// Simple suffix check for MVP
-				if strings.HasSuffix(key, ".csv") || strings.HasSuffix(key, ".json") || strings.HasSuffix(key, ".jsonl") {
+				if strings.HasSuffix(key, ".csv") || strings.HasSuffix(key, ".json") || strings.HasSuffix(key, ".jsonl") ||
+					strings.HasSuffix(key, ".xlsx") || strings.HasSuffix(key, ".xlsm") || strings.HasSuffix(key, ".parquet") {
 					if err := s.scanObject(ctx, client, bucket, key, limit, random, results); err != nil {
 						fmt.Printf("Error scanning s3://%s/%s: %v\n", bucket, key, err)
 					}
@@ -92,6 +96,27 @@ func (s *S3Scanner) scanObject(ctx context.Context, client *s3.Client, bucket, k
 		// Wrap in bufio to peek for array vs lines
 		br := bufio.NewReader(resp.Body)
 		return ScanJSONStreamFromReader(br, sourceName, limit, random, results)
+	} else if strings.HasSuffix(key, ".xlsx") || strings.HasSuffix(key, ".xlsm") {
+		return ScanExcelStream(resp.Body, sourceName, limit, random, results)
+	} else if strings.HasSuffix(key, ".parquet") {
+		// Parquet needs ReaderAt, so we download to a temp file
+		tmpFile, err := os.CreateTemp("", "piihound-*.parquet")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(tmpFile.Name())
+		defer tmpFile.Close()
+
+		if _, err := io.Copy(tmpFile, resp.Body); err != nil {
+			return err
+		}
+
+		stat, _ := tmpFile.Stat()
+		pf, err := parquet.OpenFile(tmpFile, stat.Size())
+		if err != nil {
+			return err
+		}
+		return ScanParquetFile(pf, sourceName, limit, random, results)
 	}
 
 	return nil
@@ -114,5 +139,5 @@ func ScanJSONStreamFromReader(r *bufio.Reader, sourceName string, limit int, ran
 		}
 	}
 
-	return ScanJSONInternal(decoder, isArray, sourceName, limit, results)
+	return ScanJSONInternal(decoder, isArray, sourceName, limit, random, results)
 }

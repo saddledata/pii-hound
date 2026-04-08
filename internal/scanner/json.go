@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/saddledata/pii-hound/internal/detectors"
 )
@@ -61,13 +63,17 @@ func ScanJSONStream(r io.ReadSeeker, sourceName string, limit int, random bool, 
 		decoder = json.NewDecoder(r)
 	}
 
-	return ScanJSONInternal(decoder, isArray, sourceName, limit, results)
+	return ScanJSONInternal(decoder, isArray, sourceName, limit, random, results)
 }
 
-func ScanJSONInternal(decoder *json.Decoder, isArray bool, sourceName string, limit int, results chan<- Result) error {
+func ScanJSONInternal(decoder *json.Decoder, isArray bool, sourceName string, limit int, random bool, results chan<- Result) error {
 	heuristicFound := make(map[string]bool)
-	rowCount := 0
 
+	if random {
+		return scanJSONRandom(decoder, isArray, sourceName, limit, heuristicFound, results)
+	}
+
+	rowCount := 0
 	for {
 		if rowCount >= limit {
 			break
@@ -83,44 +89,82 @@ func ScanJSONInternal(decoder *json.Decoder, isArray bool, sourceName string, li
 			if err == io.EOF {
 				break
 			}
-			// Skip invalid objects in array/lines
 			continue
 		}
 
-		// Evaluate keys first (heuristics) if not already done for that key
-		for key, val := range obj {
-			if !heuristicFound[key] {
-				if match := detectors.EvaluateColumnHeuristics(key); match != nil {
-					heuristicFound[key] = true
-					results <- Result{
-						Source: sourceName,
-						Column: key,
-						Match:  *match,
-					}
-					continue
-				}
-			}
-
-			// If heuristics didn't match, check data
-			if !heuristicFound[key] {
-				strVal := fmt.Sprintf("%v", val)
-				if strVal == "" || strVal == "<nil>" {
-					continue
-				}
-
-				if match := detectors.EvaluateData(strVal); match != nil {
-					heuristicFound[key] = true
-					results <- Result{
-						Source: sourceName,
-						Column: key,
-						Match:  *match,
-					}
-				}
-			}
-		}
-
+		processJSONRecord(obj, sourceName, heuristicFound, results)
 		rowCount++
 	}
 
 	return nil
+}
+
+func scanJSONRandom(decoder *json.Decoder, isArray bool, sourceName string, limit int, heuristicFound map[string]bool, results chan<- Result) error {
+	reservoir := make([]map[string]interface{}, 0, limit)
+	count := 0
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	for {
+		if isArray && !decoder.More() {
+			break
+		}
+
+		var obj map[string]interface{}
+		err := decoder.Decode(&obj)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue // Skip malformed objects
+		}
+
+		count++
+		if len(reservoir) < limit {
+			reservoir = append(reservoir, obj)
+		} else {
+			j := rng.Intn(count)
+			if j < limit {
+				reservoir[j] = obj
+			}
+		}
+	}
+
+	// Process the random sample
+	for _, obj := range reservoir {
+		processJSONRecord(obj, sourceName, heuristicFound, results)
+	}
+
+	return nil
+}
+
+func processJSONRecord(obj map[string]interface{}, sourceName string, heuristicFound map[string]bool, results chan<- Result) {
+	for key, val := range obj {
+		if !heuristicFound[key] {
+			if match := detectors.EvaluateColumnHeuristics(key); match != nil {
+				heuristicFound[key] = true
+				results <- Result{
+					Source: sourceName,
+					Column: key,
+					Match:  *match,
+				}
+				continue
+			}
+		}
+
+		if !heuristicFound[key] {
+			strVal := fmt.Sprintf("%v", val)
+			if strVal == "" || strVal == "<nil>" {
+				continue
+			}
+
+			if match := detectors.EvaluateData(strVal); match != nil {
+				heuristicFound[key] = true
+				results <- Result{
+					Source: sourceName,
+					Column: key,
+					Match:  *match,
+				}
+			}
+		}
+	}
 }
