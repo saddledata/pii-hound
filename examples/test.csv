@@ -1,0 +1,4 @@
+id,name,email,ssn,notes
+1,John Doe,john@example.com,123-45-6789,Regular customer
+2,Jane Smith,jane@test.org,987-65-4321,VIP
+3,Bob,bob@bob.com,000-00-0000,Has weird SSN

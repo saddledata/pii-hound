@@ -1,0 +1,72 @@
+# .goreleaser.yaml
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    binary: pii-hound
+
+archives:
+  - format: tar.gz
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "arm64" }}arm64
+      {{- else }}{{ .Arch }}{{ end }}
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+dockers:
+  - image_templates:
+      - "saddledata/pii-hound:latest"
+      - "saddledata/pii-hound:{{ .Tag }}"
+      - "saddledata/pii-hound:v{{ .Major }}"
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.description={{ .ProjectName }} sniffs out unprotected PII and secrets in your data sources."
+      - "--label=org.opencontainers.image.url=https://github.com/saddledata/pii-hound"
+      - "--label=org.opencontainers.image.source=https://github.com/saddledata/pii-hound"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--platform=linux/amd64"
+
+brews:
+  - name: pii-hound
+    repository:
+      owner: saddledata
+      name: homebrew-tap
+    directory: Formula
+    homepage: "https://github.com/saddledata/pii-hound"
+    description: "pii-hound sniffs out unprotected PII and secrets in your data sources."
+    test: |
+      system "#{bin}/pii-hound --version"
