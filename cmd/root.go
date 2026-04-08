@@ -7,9 +7,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var Version = "dev"
+
 var rootCmd = &cobra.Command{
-	Use:   "pii-hound",
-	Short: "pii-hound sniffs out unprotected PII in your databases and files",
+	Use:     "pii-hound",
+	Version: Version,
+	Short:   "pii-hound sniffs out unprotected PII in your databases and files",
 	Long: `🐶 pii-hound is a lightning-fast, dependency-free CLI tool used by data engineers 
 to sniff out unprotected Personally Identifiable Information (PII) in databases and local files.`,
 }

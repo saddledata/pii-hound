@@ -18,7 +18,7 @@ func NewPostgresScanner(dsn string) *PostgresScanner {
 	return &PostgresScanner{dsn: dsn}
 }
 
-func (s *PostgresScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result) error {
+func (s *PostgresScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result, progress ProgressReporter) error {
 	db, err := sql.Open("postgres", s.dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open postgres connection: %w", err)
@@ -34,6 +34,10 @@ func (s *PostgresScanner) Scan(ctx context.Context, limit int, random bool, resu
 		return fmt.Errorf("failed to get tables: %w", err)
 	}
 
+	if progress != nil {
+		progress.Start(len(tables))
+	}
+
 	var wg sync.WaitGroup
 	// Limit concurrency to not overwhelm database
 	semaphore := make(chan struct{}, 5)
@@ -45,6 +49,9 @@ func (s *PostgresScanner) Scan(ctx context.Context, limit int, random bool, resu
 			defer wg.Done()
 			defer func() { <-semaphore }() // release
 			s.scanTable(ctx, db, tableName, limit, random, results)
+			if progress != nil {
+				progress.Increment()
+			}
 		}(table)
 	}
 

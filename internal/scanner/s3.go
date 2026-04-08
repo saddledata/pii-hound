@@ -23,7 +23,7 @@ func NewS3Scanner(uri string) *S3Scanner {
 	return &S3Scanner{uri: uri}
 }
 
-func (s *S3Scanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result) error {
+func (s *S3Scanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result, progress ProgressReporter) error {
 	// Parse s3://bucket/key
 	u := strings.TrimPrefix(s.uri, "s3://")
 	parts := strings.SplitN(u, "/", 2)
@@ -48,6 +48,8 @@ func (s *S3Scanner) Scan(ctx context.Context, limit int, random bool, results ch
 		// Get prefix before wildcard
 		prefix := strings.Split(path, "*")[0]
 		
+		// Count first for progress bar
+		var objects []string
 		paginator := s3.NewListObjectsV2Paginator(client, &s3.ListObjectsV2Input{
 			Bucket: aws.String(bucket),
 			Prefix: aws.String(prefix),
@@ -61,18 +63,35 @@ func (s *S3Scanner) Scan(ctx context.Context, limit int, random bool, results ch
 
 			for _, obj := range page.Contents {
 				key := *obj.Key
-				// Simple suffix check for MVP
 				if strings.HasSuffix(key, ".csv") || strings.HasSuffix(key, ".json") || strings.HasSuffix(key, ".jsonl") ||
 					strings.HasSuffix(key, ".xlsx") || strings.HasSuffix(key, ".xlsm") || strings.HasSuffix(key, ".parquet") {
-					if err := s.scanObject(ctx, client, bucket, key, limit, random, results); err != nil {
-						fmt.Printf("Error scanning s3://%s/%s: %v\n", bucket, key, err)
-					}
+					objects = append(objects, key)
 				}
+			}
+		}
+
+		if progress != nil {
+			progress.Start(len(objects))
+		}
+
+		for _, key := range objects {
+			if err := s.scanObject(ctx, client, bucket, key, limit, random, results); err != nil {
+				fmt.Printf("Error scanning s3://%s/%s: %v\n", bucket, key, err)
+			}
+			if progress != nil {
+				progress.Increment()
 			}
 		}
 	} else {
 		// Single object
-		return s.scanObject(ctx, client, bucket, path, limit, random, results)
+		if progress != nil {
+			progress.Start(1)
+		}
+		err := s.scanObject(ctx, client, bucket, path, limit, random, results)
+		if progress != nil {
+			progress.Increment()
+		}
+		return err
 	}
 
 	return nil

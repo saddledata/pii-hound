@@ -21,7 +21,7 @@ func NewGCSScanner(uri string) *GCSScanner {
 	return &GCSScanner{uri: uri}
 }
 
-func (s *GCSScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result) error {
+func (s *GCSScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result, progress ProgressReporter) error {
 	// Parse gs://bucket/key
 	u := strings.TrimPrefix(s.uri, "gs://")
 	parts := strings.SplitN(u, "/", 2)
@@ -45,10 +45,11 @@ func (s *GCSScanner) Scan(ctx context.Context, limit int, random bool, results c
 	// If path contains wildcards, we need to list
 	if strings.Contains(path, "*") {
 		prefix := strings.Split(path, "*")[0]
-		
+
 		query := &storage.Query{Prefix: prefix}
 		it := bucket.Objects(ctx, query)
 
+		var objects []string
 		for {
 			attrs, err := it.Next()
 			if err == iterator.Done {
@@ -59,17 +60,34 @@ func (s *GCSScanner) Scan(ctx context.Context, limit int, random bool, results c
 			}
 
 			key := attrs.Name
-			// Simple suffix check for MVP
 			if strings.HasSuffix(key, ".csv") || strings.HasSuffix(key, ".json") || strings.HasSuffix(key, ".jsonl") ||
 				strings.HasSuffix(key, ".xlsx") || strings.HasSuffix(key, ".xlsm") || strings.HasSuffix(key, ".parquet") {
-				if err := s.scanObject(ctx, bucket, key, limit, random, results); err != nil {
-					fmt.Printf("Error scanning gs://%s/%s: %v\n", bucketName, key, err)
-				}
+				objects = append(objects, key)
+			}
+		}
+
+		if progress != nil {
+			progress.Start(len(objects))
+		}
+
+		for _, key := range objects {
+			if err := s.scanObject(ctx, bucket, key, limit, random, results); err != nil {
+				fmt.Printf("Error scanning gs://%s/%s: %v\n", bucketName, key, err)
+			}
+			if progress != nil {
+				progress.Increment()
 			}
 		}
 	} else {
 		// Single object
-		return s.scanObject(ctx, bucket, path, limit, random, results)
+		if progress != nil {
+			progress.Start(1)
+		}
+		err := s.scanObject(ctx, bucket, path, limit, random, results)
+		if progress != nil {
+			progress.Increment()
+		}
+		return err
 	}
 
 	return nil

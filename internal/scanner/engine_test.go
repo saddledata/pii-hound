@@ -12,9 +12,15 @@ type MockScanner struct {
 	Results []Result
 }
 
-func (m *MockScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result) error {
+func (m *MockScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result, progress ProgressReporter) error {
+	if progress != nil {
+		progress.Start(len(m.Results))
+	}
 	for _, r := range m.Results {
 		results <- r
+		if progress != nil {
+			progress.Increment()
+		}
 	}
 	return nil
 }

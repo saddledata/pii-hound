@@ -19,7 +19,7 @@ func NewBigQueryScanner(uri string) *BigQueryScanner {
 	return &BigQueryScanner{uri: uri}
 }
 
-func (s *BigQueryScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result) error {
+func (s *BigQueryScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result, progress ProgressReporter) error {
 	// Parse bigquery://project-id/dataset-id
 	u := strings.TrimPrefix(s.uri, "bigquery://")
 	parts := strings.Split(u, "/")
@@ -36,26 +36,38 @@ func (s *BigQueryScanner) Scan(ctx context.Context, limit int, random bool, resu
 	defer client.Close()
 
 	dataset := client.Dataset(datasetID)
+	
+	// Count tables first for progress bar
 	it := dataset.Tables(ctx)
-
-	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, 5)
-
+	var tables []*bigquery.Table
 	for {
-		table, err := it.Next()
+		t, err := it.Next()
 		if err == iterator.Done {
 			break
 		}
 		if err != nil {
 			return fmt.Errorf("failed to list bigquery tables: %w", err)
 		}
+		tables = append(tables, t)
+	}
 
+	if progress != nil {
+		progress.Start(len(tables))
+	}
+
+	var wg sync.WaitGroup
+	semaphore := make(chan struct{}, 5)
+
+	for _, table := range tables {
 		wg.Add(1)
 		semaphore <- struct{}{}
 		go func(t *bigquery.Table) {
 			defer wg.Done()
 			defer func() { <-semaphore }()
 			s.scanTable(ctx, client, t, limit, random, results)
+			if progress != nil {
+				progress.Increment()
+			}
 		}(table)
 	}
 

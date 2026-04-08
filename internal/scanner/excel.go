@@ -21,10 +21,14 @@ func NewExcelScanner(path string) *ExcelScanner {
 	return &ExcelScanner{path: path}
 }
 
-func (s *ExcelScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result) error {
+func (s *ExcelScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result, progress ProgressReporter) error {
 	matches, err := filepath.Glob(s.path)
 	if err != nil {
 		return fmt.Errorf("invalid path pattern: %w", err)
+	}
+
+	if progress != nil {
+		progress.Start(len(matches))
 	}
 
 	for _, match := range matches {
@@ -37,6 +41,9 @@ func (s *ExcelScanner) Scan(ctx context.Context, limit int, random bool, results
 			fmt.Printf("Error scanning excel file %s: %v\n", match, err)
 		}
 		f.Close()
+		if progress != nil {
+			progress.Increment()
+		}
 	}
 	return nil
 }

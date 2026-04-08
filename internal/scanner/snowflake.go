@@ -18,7 +18,7 @@ func NewSnowflakeScanner(dsn string) *SnowflakeScanner {
 	return &SnowflakeScanner{dsn: dsn}
 }
 
-func (s *SnowflakeScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result) error {
+func (s *SnowflakeScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result, progress ProgressReporter) error {
 	db, err := sql.Open("snowflake", s.dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open snowflake connection: %w", err)
@@ -34,6 +34,10 @@ func (s *SnowflakeScanner) Scan(ctx context.Context, limit int, random bool, res
 		return fmt.Errorf("failed to get snowflake tables: %w", err)
 	}
 
+	if progress != nil {
+		progress.Start(len(tables))
+	}
+
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, 5)
 
@@ -44,6 +48,9 @@ func (s *SnowflakeScanner) Scan(ctx context.Context, limit int, random bool, res
 			defer wg.Done()
 			defer func() { <-semaphore }()
 			s.scanTable(ctx, db, tableName, limit, random, results)
+			if progress != nil {
+				progress.Increment()
+			}
 		}(table)
 	}
 

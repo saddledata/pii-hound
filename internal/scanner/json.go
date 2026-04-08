@@ -21,15 +21,22 @@ func NewJSONScanner(path string) *JSONScanner {
 	return &JSONScanner{path: path}
 }
 
-func (s *JSONScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result) error {
+func (s *JSONScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result, progress ProgressReporter) error {
 	matches, err := filepath.Glob(s.path)
 	if err != nil {
 		return fmt.Errorf("invalid path pattern: %w", err)
 	}
 
+	if progress != nil {
+		progress.Start(len(matches))
+	}
+
 	for _, match := range matches {
 		if err := s.scanFile(match, limit, random, results); err != nil {
 			fmt.Printf("Error scanning file %s: %v\n", match, err)
+		}
+		if progress != nil {
+			progress.Increment()
 		}
 	}
 	return nil

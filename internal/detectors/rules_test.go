@@ -114,6 +114,10 @@ func TestEvaluateColumnHeuristics(t *testing.T) {
 		{"api_key", TypeSecret},
 		{"token", TypeSecret},
 		{"password", TypeSecret},
+		{"first_name", TypeName},
+		{"last_name", TypeName},
+		{"fullname", TypeName},
+		{"customer_name", TypeName},
 		{"zipcode", ""}, // Should NOT match IP
 		{"description", ""},
 	}

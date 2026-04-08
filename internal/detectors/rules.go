@@ -27,6 +27,7 @@ const (
 	TypeIP      PiiType = "IP Address"
 	TypeSecret  PiiType = "Secret/Token"
 	TypeKeyword PiiType = "Sensitive Keyword"
+	TypeName    PiiType = "Person Name"
 )
 
 // MatchResult stores information about a matched PII
@@ -72,6 +73,7 @@ var (
 	phoneHeuristic  = regexp.MustCompile(`(?i)(\b|_)(phone|mobile|cell)(\b|_)`)
 	ipHeuristic     = regexp.MustCompile(`(?i)(\b|_)(ip.*addr|ip)(\b|_)`)
 	secretHeuristic = regexp.MustCompile(`(?i)(\b|_)(secret|token|api.*key|apikey|passwd|password|credential)(\b|_)`)
+	nameHeuristic   = regexp.MustCompile(`(?i)(\b|_)(first.*name|last.*name|fullname|cust.*name|customer.*name)(\b|_)`)
 
 	// Loaded custom rules
 	customRules []CustomRule
@@ -159,6 +161,9 @@ func EvaluateColumnHeuristics(columnName string) *MatchResult {
 	}
 	if secretHeuristic.MatchString(columnName) {
 		return &MatchResult{Type: TypeSecret, Risk: HighRisk}
+	}
+	if nameHeuristic.MatchString(columnName) {
+		return &MatchResult{Type: TypeName, Risk: MediumRisk}
 	}
 	return nil
 }

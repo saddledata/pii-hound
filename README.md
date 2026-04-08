@@ -124,6 +124,7 @@ pii-hound scan ./data.csv --rules rules.yaml
 ### 🟡 Medium Risk
 *   **IP Addresses**: Both IPv4 and IPv6 detection.
 *   **Phone Numbers**: Matches various international and US formats.
+*   **Person Names**: Heuristic detection for common column names (e.g., `first_name`, `last_name`, `fullname`).
 
 ---
 

@@ -19,6 +19,8 @@ builds:
       - goos: windows
         goarch: arm64
     binary: pii-hound
+    ldflags:
+      - -s -w -X github.com/saddledata/pii-hound/cmd.Version={{.Version}}
 
 archives:
   - format: tar.gz

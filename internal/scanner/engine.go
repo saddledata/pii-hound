@@ -8,6 +8,13 @@ import (
 	"github.com/saddledata/pii-hound/internal/detectors"
 )
 
+// ProgressReporter defines an interface for reporting progress
+type ProgressReporter interface {
+	Start(total int)
+	Increment()
+	Finish()
+}
+
 // Result represents the finding in a specific column of a table/file
 type Result struct {
 	Source string                // Table name or file name
@@ -17,14 +24,15 @@ type Result struct {
 
 // Scanner defines the interface for different data source scanners
 type Scanner interface {
-	Scan(ctx context.Context, limit int, random bool, results chan<- Result) error
+	Scan(ctx context.Context, limit int, random bool, results chan<- Result, progress ProgressReporter) error
 }
 
 // Engine orchestrates the scanning process
 type Engine struct {
-	Scanner Scanner
-	Limit   int
-	Random  bool
+	Scanner  Scanner
+	Limit    int
+	Random   bool
+	Progress ProgressReporter
 }
 
 // NewEngine creates a new scanning engine
@@ -57,11 +65,15 @@ func (e *Engine) Run(ctx context.Context) ([]Result, error) {
 	}()
 
 	// Run scanner
-	err := e.Scanner.Scan(ctx, e.Limit, e.Random, resultsChan)
+	err := e.Scanner.Scan(ctx, e.Limit, e.Random, resultsChan, e.Progress)
 	close(resultsChan)
 
 	// Wait for results collection to finish
 	wg.Wait()
+
+	if e.Progress != nil {
+		e.Progress.Finish()
+	}
 
 	return results, err
 }

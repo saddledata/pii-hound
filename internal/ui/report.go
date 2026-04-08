@@ -7,7 +7,41 @@ import (
 	"github.com/fatih/color"
 	"github.com/saddledata/pii-hound/internal/detectors"
 	"github.com/saddledata/pii-hound/internal/scanner"
+	"github.com/schollz/progressbar/v3"
 )
+
+type ProgressBar struct {
+	bar *progressbar.ProgressBar
+}
+
+func (p *ProgressBar) Start(total int) {
+	p.bar = progressbar.NewOptions(total,
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionShowCount(),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionSetDescription("[cyan]Sniffing...[reset]"),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
+	)
+}
+
+func (p *ProgressBar) Increment() {
+	if p.bar != nil {
+		p.bar.Add(1)
+	}
+}
+
+func (p *ProgressBar) Finish() {
+	if p.bar != nil {
+		p.bar.Finish()
+		fmt.Println() // New line after bar finishes
+	}
+}
 
 func PrintJSONReport(results []scanner.Result) {
 	if results == nil {

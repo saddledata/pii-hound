@@ -103,6 +103,9 @@ using a combination of column-name heuristics and regex data sampling.`,
 
 			engine := scanner.NewEngine(s, limit)
 			engine.Random = random
+			if !jsonOutput {
+				engine.Progress = &ui.ProgressBar{}
+			}
 
 			if !jsonOutput {
 				fmt.Printf("🐶 Sniffing %s...\n", uri)

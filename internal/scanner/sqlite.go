@@ -18,7 +18,7 @@ func NewSQLiteScanner(path string) *SQLiteScanner {
 	return &SQLiteScanner{path: path}
 }
 
-func (s *SQLiteScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result) error {
+func (s *SQLiteScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result, progress ProgressReporter) error {
 	db, err := sql.Open("sqlite", s.path)
 	if err != nil {
 		return fmt.Errorf("failed to open sqlite database: %w", err)
@@ -28,6 +28,10 @@ func (s *SQLiteScanner) Scan(ctx context.Context, limit int, random bool, result
 	tables, err := getSQLiteTables(ctx, db)
 	if err != nil {
 		return fmt.Errorf("failed to get tables: %w", err)
+	}
+
+	if progress != nil {
+		progress.Start(len(tables))
 	}
 
 	var wg sync.WaitGroup
@@ -40,6 +44,9 @@ func (s *SQLiteScanner) Scan(ctx context.Context, limit int, random bool, result
 			defer wg.Done()
 			defer func() { <-semaphore }()
 			s.scanTable(ctx, db, tableName, limit, random, results)
+			if progress != nil {
+				progress.Increment()
+			}
 		}(table)
 	}
 

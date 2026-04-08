@@ -18,7 +18,7 @@ func NewMySQLScanner(dsn string) *MySQLScanner {
 	return &MySQLScanner{dsn: dsn}
 }
 
-func (s *MySQLScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result) error {
+func (s *MySQLScanner) Scan(ctx context.Context, limit int, random bool, results chan<- Result, progress ProgressReporter) error {
 	db, err := sql.Open("mysql", s.dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open mysql connection: %w", err)
@@ -34,6 +34,10 @@ func (s *MySQLScanner) Scan(ctx context.Context, limit int, random bool, results
 		return fmt.Errorf("failed to get tables: %w", err)
 	}
 
+	if progress != nil {
+		progress.Start(len(tables))
+	}
+
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, 5)
 
@@ -44,6 +48,9 @@ func (s *MySQLScanner) Scan(ctx context.Context, limit int, random bool, results
 			defer wg.Done()
 			defer func() { <-semaphore }()
 			s.scanTable(ctx, db, tableName, limit, random, results)
+			if progress != nil {
+				progress.Increment()
+			}
 		}(table)
 	}
 
