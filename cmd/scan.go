@@ -165,7 +165,7 @@ using a combination of column-name heuristics and regex data sampling.`,
 			} else if strings.HasSuffix(uri, ".parquet") {
 				s = scanner.NewParquetScanner(uri)
 			} else {
-				fmt.Printf("Warning: Unsupported URI format '%s'. Skipping...\n", uri)
+				fmt.Fprintf(os.Stderr, "Warning: Unsupported URI format '%s'. Skipping...\n", uri)
 				continue
 			}
 
@@ -177,11 +177,14 @@ using a combination of column-name heuristics and regex data sampling.`,
 
 			if !jsonOutput && !sarifOutput {
 				fmt.Printf("🐶 Sniffing %s...\n", uri)
+			} else {
+				// Print to stderr so it doesn't corrupt stdout redirection
+				fmt.Fprintf(os.Stderr, "🐶 Sniffing %s...\n", uri)
 			}
 
 			results, err := engine.Run(ctx)
 			if err != nil {
-				fmt.Printf("Error scanning %s: %v\n", uri, err)
+				fmt.Fprintf(os.Stderr, "Error scanning %s: %v\n", uri, err)
 				continue
 			}
 			allResults = append(allResults, results...)
