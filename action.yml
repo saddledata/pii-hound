@@ -7,7 +7,8 @@ branding:
 inputs:
   path:
     description: 'The file path or database URI to scan'
-    required: true
+    required: false
+    default: '.'
   limit:
     description: 'Maximum rows to sample per table/file'
     required: false
@@ -16,6 +17,13 @@ inputs:
     description: 'Sample rows randomly'
     required: false
     default: 'false'
+  diff:
+    description: 'Only scan files that have changed in git'
+    required: false
+    default: 'false'
+  base:
+    description: 'Base git ref to compare against (used with diff)'
+    required: false
   fail-on-pii:
     description: 'Exit with code 1 if any PII is detected'
     required: false
@@ -68,6 +76,8 @@ runs:
       shell: bash
       run: |
         ARGS="${{ inputs.path }}"
+        if [ "${{ inputs.diff }}" = "true" ]; then ARGS="$ARGS --diff"; fi
+        if [ -n "${{ inputs.base }}" ]; then ARGS="$ARGS --base ${{ inputs.base }}"; fi
         if [ "${{ inputs.random }}" = "true" ]; then ARGS="$ARGS --random"; fi
         if [ "${{ inputs.fail-on-pii }}" = "true" ]; then ARGS="$ARGS --fail-on-pii"; fi
         if [ -n "${{ inputs.limit }}" ]; then ARGS="$ARGS --limit ${{ inputs.limit }}"; fi
