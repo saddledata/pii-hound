@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/saddledata/pii-hound/internal/detectors"
+	"github.com/saddledata/pii-hound/internal/git"
 	"github.com/saddledata/pii-hound/internal/scanner"
 	"github.com/saddledata/pii-hound/internal/ui"
 	"github.com/spf13/cobra"
@@ -17,6 +18,8 @@ var failOnPii bool
 var jsonOutput bool
 var sarifOutput bool
 var random bool
+var diff bool
+var baseRef string
 var configPath string
 
 var scanCmd = &cobra.Command{
@@ -45,12 +48,12 @@ using a combination of column-name heuristics and regex data sampling.`,
   # Scan a Snowflake database
   pii-hound scan "snowflake://user:pass@account/MY_DB/MY_SCHEMA?warehouse=COMPUTE_WH"
 
-  # Scan a BigQuery dataset
-  pii-hound scan "bigquery://my-project/my_dataset"
+  # Scan only files that have changed in git
+  pii-hound scan --diff
 
-  # Scan a SQLite database
-  pii-hound scan ./my-data.db`,
-	Args: cobra.MinimumNArgs(1),
+  # Scan changed files compared to a base branch
+  pii-hound scan --diff --base main`,
+	Args: cobra.ArbitraryArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 
@@ -84,9 +87,51 @@ using a combination of column-name heuristics and regex data sampling.`,
 			detectors.GlobalConfig.FailOnPii = failOnPii
 		}
 
+		// 3. Handle Git Diff filtering
+		targets := args
+		if diff {
+			if !git.IsGitRepo() {
+				fmt.Println("Error: --diff can only be used inside a git repository")
+				os.Exit(1)
+			}
+
+			changedFiles, err := git.GetChangedFiles(baseRef)
+			if err != nil {
+				fmt.Printf("Error getting changed files from git: %v\n", err)
+				os.Exit(1)
+			}
+
+			if len(args) > 0 {
+				// Filter changed files to only include those that match the provided args/paths
+				var filtered []string
+				for _, cf := range changedFiles {
+					for _, arg := range args {
+						if strings.HasPrefix(cf, arg) || arg == "." {
+							filtered = append(filtered, cf)
+							break
+						}
+					}
+				}
+				targets = filtered
+			} else {
+				// No paths provided, scan all changed files
+				targets = changedFiles
+			}
+
+			if len(targets) == 0 {
+				if !jsonOutput && !sarifOutput {
+					fmt.Println("No changed files found to scan.")
+				}
+				return
+			}
+		} else if len(args) == 0 {
+			fmt.Println("Error: No scan targets provided. Provide a URI or use --diff")
+			os.Exit(1)
+		}
+
 		var allResults []scanner.Result
 
-		for _, uri := range args {
+		for _, uri := range targets {
 			var s scanner.Scanner
 
 			if strings.HasPrefix(uri, "postgres://") || strings.HasPrefix(uri, "postgresql://") {
@@ -163,6 +208,8 @@ func init() {
 	scanCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output results in JSON format")
 	scanCmd.Flags().BoolVar(&sarifOutput, "sarif", false, "Output results in SARIF format for GitHub Security")
 	scanCmd.Flags().BoolVar(&random, "random", false, "Sample rows randomly instead of the first N rows")
+	scanCmd.Flags().BoolVar(&diff, "diff", false, "Only scan files that have changed in git")
+	scanCmd.Flags().StringVar(&baseRef, "base", "", "Base git ref to compare against (used with --diff)")
 	scanCmd.Flags().StringVar(&configPath, "config", "", "Path to a YAML configuration file")
 	scanCmd.Flags().StringVar(&configPath, "rules", "", "Path to a YAML configuration file (alias for --config)")
 	scanCmd.Flags().MarkHidden("rules")

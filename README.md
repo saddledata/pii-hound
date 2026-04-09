@@ -15,6 +15,7 @@ It connects to your data sources, samples records (up to a configurable limit), 
 *   **Secrets Detection**: Sniffs out AWS Keys, GitHub Tokens, and Private Keys.
 *   **PII Detection**: Detects SSNs, Credit Cards (with Luhn validation), Emails, IP Addresses, and Phone Numbers.
 *   **CI/CD Ready**: Machine-readable JSON and **SARIF** output, plus a `--fail-on-pii` flag to block risky deployments.
+*   **Git Integration**: Use the `--diff` flag to scan only files that have changed in your repository.
 *   **GitHub Integration**: Upload SARIF results directly to GitHub's Security tab.
 *   **Intelligence**: High-performance **Reservoir Sampling** for large files and random database sampling.
 *   **Lightning Fast**: Concurrent, streaming architecture designed to handle gigabytes of data without high memory usage.
@@ -98,6 +99,16 @@ Block your pipeline if PII is detected in your export folder:
 pii-hound scan "./exports/*.csv" --fail-on-pii
 ```
 
+### Git 'Changed Files' Only
+Speed up your scans by only checking files that have changed in git (staged, unstaged, or since a base branch):
+```bash
+# Scan all local changes
+pii-hound scan --diff
+
+# Scan changed files compared to main branch
+pii-hound scan --diff --base origin/main
+```
+
 ### GitHub Actions (SARIF)
 Generate a SARIF report to see PII findings in your PRs and Security tab:
 ```bash
@@ -155,6 +166,8 @@ rules:
 | :--- | :--- | :--- |
 | `--limit` | `-l` | Maximum rows/objects to sample per table/file (default: 1000). |
 | `--random` | | Sample rows randomly (uses Reservoir Sampling for files). |
+| `--diff` | | Only scan files that have changed in git. |
+| `--base` | | Base git ref to compare against (used with --diff). |
 | `--json` | | Output report in machine-readable JSON format. |
 | `--sarif` | | Output report in SARIF format for GitHub Security. |
 | `--fail-on-pii` | | Exit with code 1 if any PII or Secrets are detected. |

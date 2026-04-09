@@ -36,4 +36,19 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-          # GH_PAT is needed instead of standard GITHUB_TOKEN to push to homebrew-tap repo
+
+      - name: Update Major Tag
+        shell: bash
+        run: |
+          # Extract major version (e.g. v1 from v1.2.3)
+          TAG=${{ github.ref_name }}
+          MAJOR=${TAG%%.*}
+          
+          # Only update if it's a semantic version tag
+          if [[ $MAJOR =~ ^v[0-9]+$ ]]; then
+            echo "Updating floating tag $MAJOR to $TAG..."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -fa "$MAJOR" -m "Update $MAJOR tag to $TAG"
+            git push origin "$MAJOR" --force
+          fi
