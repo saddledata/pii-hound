@@ -34,12 +34,12 @@ jobs:
           fetch-depth: 0
 
       - name: Scan for PII
-        # Using the action from the current repository
         uses: ./
         with:
-          diff: true
-          # For pull requests, compare against the base branch
+          # Use diff mode on PRs, full scan on pushes/tags
+          diff: ${{ github.event_name == 'pull_request' }}
           base: ${{ github.base_ref }}
+          path: '.'
           sarif: 'pii-report.sarif'
 
       - name: Upload SARIF
