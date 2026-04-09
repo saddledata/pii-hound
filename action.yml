@@ -1,0 +1,82 @@
+name: 'pii-hound'
+description: 'Sniff out unprotected PII and secrets in your data sources'
+branding:
+  icon: 'search'
+  color: 'blue'
+
+inputs:
+  path:
+    description: 'The file path or database URI to scan'
+    required: true
+  limit:
+    description: 'Maximum rows to sample per table/file'
+    required: false
+    default: '1000'
+  random:
+    description: 'Sample rows randomly'
+    required: false
+    default: 'false'
+  fail-on-pii:
+    description: 'Exit with code 1 if any PII is detected'
+    required: false
+    default: 'true'
+  config:
+    description: 'Path to a .pii-hound.yaml configuration file'
+    required: false
+  sarif:
+    description: 'Generate a SARIF report file (path to save)'
+    required: false
+  json:
+    description: 'Generate a JSON report file (path to save)'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Determine OS and Arch
+      shell: bash
+      run: |
+        OS=$(uname -s)
+        ARCH=$(uname -m)
+        case $OS in
+          Linux)  OS_NAME="Linux" ;;
+          Darwin) OS_NAME="Darwin" ;;
+          *)      echo "Unsupported OS: $OS"; exit 1 ;;
+        esac
+        case $ARCH in
+          x86_64) ARCH_NAME="x86_64" ;;
+          arm64|aarch64) ARCH_NAME="arm64" ;;
+          *)      echo "Unsupported Arch: $ARCH"; exit 1 ;;
+        esac
+        echo "BIN_SUFFIX=${OS_NAME}_${ARCH_NAME}" >> $GITHUB_ENV
+
+    - name: Download pii-hound
+      shell: bash
+      run: |
+        # Use the action's ref (tag) to find the version, fallback to latest
+        VERSION="${{ github.action_ref }}"
+        if [ -z "$VERSION" ] || [ "$VERSION" = "main" ] || [ "$VERSION" = "master" ]; then
+          VERSION=$(curl -s https://api.github.com/repos/saddledata/pii-hound/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        fi
+        echo "Downloading pii-hound $VERSION for $BIN_SUFFIX..."
+        URL="https://github.com/saddledata/pii-hound/releases/download/${VERSION}/pii-hound_${BIN_SUFFIX}.tar.gz"
+        curl -L "$URL" | tar -xz
+        chmod +x pii-hound
+        echo "$(pwd)" >> $GITHUB_PATH
+
+    - name: Run Scan
+      shell: bash
+      run: |
+        ARGS="${{ inputs.path }}"
+        if [ "${{ inputs.random }}" = "true" ]; then ARGS="$ARGS --random"; fi
+        if [ "${{ inputs.fail-on-pii }}" = "true" ]; then ARGS="$ARGS --fail-on-pii"; fi
+        if [ -n "${{ inputs.limit }}" ]; then ARGS="$ARGS --limit ${{ inputs.limit }}"; fi
+        if [ -n "${{ inputs.config }}" ]; then ARGS="$ARGS --config ${{ inputs.config }}"; fi
+        
+        if [ -n "${{ inputs.sarif }}" ]; then
+          ./pii-hound scan $ARGS --sarif > "${{ inputs.sarif }}"
+        elif [ -n "${{ inputs.json }}" ]; then
+          ./pii-hound scan $ARGS --json > "${{ inputs.json }}"
+        else
+          ./pii-hound scan $ARGS
+        fi

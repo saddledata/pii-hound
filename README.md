@@ -68,8 +68,26 @@ pii-hound scan "s3://my-bucket/exports/*.csv"
 pii-hound scan "gs://my-bucket/backups/*.json"
 ```
 
+### GitHub Action
+The fastest way to use `pii-hound` in your CI/CD pipeline is with the official GitHub Action.
+
+```yaml
+- name: Scan for PII
+  uses: saddledata/pii-hound@v1
+  with:
+    path: './data'
+    fail-on-pii: true
+    sarif: 'pii-results.sarif'
+
+- name: Upload SARIF
+  uses: github/codeql-action/upload-sarif@v3
+  if: always()
+  with:
+    sarif_file: 'pii-results.sarif'
+```
+
 ### Scan Local Files
-```bash
+...
 # Scan multiple files (wildcards supported)
 pii-hound scan ./data/*.csv ./backups/*.xlsx ./logs/*.parquet
 ```
