@@ -3,6 +3,7 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/fatih/color"
 	"github.com/saddledata/pii-hound/internal/detectors"
@@ -49,7 +50,7 @@ func PrintJSONReport(results []scanner.Result) {
 	}
 	data, err := json.MarshalIndent(results, "", "  ")
 	if err != nil {
-		fmt.Printf("Error generating JSON: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error generating JSON: %v\n", err)
 		return
 	}
 	fmt.Println(string(data))

@@ -84,9 +84,9 @@ runs:
         if [ -n "${{ inputs.config }}" ]; then ARGS="$ARGS --config ${{ inputs.config }}"; fi
         
         if [ -n "${{ inputs.sarif }}" ]; then
-          ./pii-hound scan $ARGS --sarif > "${{ inputs.sarif }}"
+          ./pii-hound scan $ARGS --sarif --output "${{ inputs.sarif }}"
         elif [ -n "${{ inputs.json }}" ]; then
-          ./pii-hound scan $ARGS --json > "${{ inputs.json }}"
+          ./pii-hound scan $ARGS --json --output "${{ inputs.json }}"
         else
           ./pii-hound scan $ARGS
         fi

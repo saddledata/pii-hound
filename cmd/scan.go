@@ -21,6 +21,7 @@ var random bool
 var diff bool
 var baseRef string
 var configPath string
+var outputPath string
 
 var scanCmd = &cobra.Command{
 	Use:   "scan <uri> [uri...]",
@@ -67,7 +68,7 @@ using a combination of column-name heuristics and regex data sampling.`,
 
 		if configPath != "" {
 			if err := detectors.LoadConfig(configPath); err != nil {
-				fmt.Printf("Error loading config: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 				os.Exit(1)
 			}
 		}
@@ -91,13 +92,13 @@ using a combination of column-name heuristics and regex data sampling.`,
 		targets := args
 		if diff {
 			if !git.IsGitRepo() {
-				fmt.Println("Error: --diff can only be used inside a git repository")
+				fmt.Fprintln(os.Stderr, "Error: --diff can only be used inside a git repository")
 				os.Exit(1)
 			}
 
 			changedFiles, err := git.GetChangedFiles(baseRef)
 			if err != nil {
-				fmt.Printf("Error getting changed files from git: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Error getting changed files from git: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -120,12 +121,12 @@ using a combination of column-name heuristics and regex data sampling.`,
 
 			if len(targets) == 0 {
 				if !jsonOutput && !sarifOutput {
-					fmt.Println("No changed files found to scan.")
+					fmt.Fprintln(os.Stderr, "No changed files found to scan.")
 				}
 				return
 			}
 		} else if len(args) == 0 {
-			fmt.Println("Error: No scan targets provided. Provide a URI or use --diff")
+			fmt.Fprintln(os.Stderr, "Error: No scan targets provided. Provide a URI or use --diff")
 			os.Exit(1)
 		}
 
@@ -198,6 +199,32 @@ using a combination of column-name heuristics and regex data sampling.`,
 			ui.PrintReport(allResults)
 		}
 
+		// Handle file output if requested
+		if outputPath != "" {
+			f, err := os.Create(outputPath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error creating output file: %v\n", err)
+				os.Exit(1)
+			}
+			defer f.Close()
+
+			// Create a temporary stdout capture
+			oldStdout := os.Stdout
+			os.Stdout = f
+
+			if sarifOutput {
+				ui.PrintSARIFReport(allResults)
+			} else if jsonOutput {
+				ui.PrintJSONReport(allResults)
+			} else {
+				// We don't want colors in file output for text
+				ui.PrintReport(allResults)
+			}
+
+			os.Stdout = oldStdout
+			fmt.Fprintf(os.Stderr, "🐶 Report saved to %s\n", outputPath)
+		}
+
 		if detectors.GlobalConfig.FailOnPii && len(allResults) > 0 {
 			os.Exit(1)
 		}
@@ -214,6 +241,7 @@ func init() {
 	scanCmd.Flags().BoolVar(&diff, "diff", false, "Only scan files that have changed in git")
 	scanCmd.Flags().StringVar(&baseRef, "base", "", "Base git ref to compare against (used with --diff)")
 	scanCmd.Flags().StringVar(&configPath, "config", "", "Path to a YAML configuration file")
+	scanCmd.Flags().StringVarP(&outputPath, "output", "o", "", "Write report to a file")
 	scanCmd.Flags().StringVar(&configPath, "rules", "", "Path to a YAML configuration file (alias for --config)")
 	scanCmd.Flags().MarkHidden("rules")
 }

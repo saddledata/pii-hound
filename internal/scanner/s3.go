@@ -76,7 +76,7 @@ func (s *S3Scanner) Scan(ctx context.Context, limit int, random bool, results ch
 
 		for _, key := range objects {
 			if err := s.scanObject(ctx, client, bucket, key, limit, random, results); err != nil {
-				fmt.Printf("Error scanning s3://%s/%s: %v\n", bucket, key, err)
+				fmt.Fprintf(os.Stderr, "Error scanning s3://%s/%s: %v\n", bucket, key, err)
 			}
 			if progress != nil {
 				progress.Increment()

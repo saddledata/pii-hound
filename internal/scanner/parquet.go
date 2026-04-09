@@ -33,7 +33,7 @@ func (s *ParquetScanner) Scan(ctx context.Context, limit int, random bool, resul
 
 	for _, match := range matches {
 		if err := s.scanFile(match, limit, random, results); err != nil {
-			fmt.Printf("Error scanning parquet file %s: %v\n", match, err)
+			fmt.Fprintf(os.Stderr, "Error scanning parquet file %s: %v\n", match, err)
 		}
 		if progress != nil {
 			progress.Increment()

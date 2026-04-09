@@ -34,11 +34,11 @@ func (s *ExcelScanner) Scan(ctx context.Context, limit int, random bool, results
 	for _, match := range matches {
 		f, err := os.Open(match)
 		if err != nil {
-			fmt.Printf("Error opening file %s: %v\n", match, err)
+			fmt.Fprintf(os.Stderr, "Error opening file %s: %v\n", match, err)
 			continue
 		}
 		if err := ScanExcelStream(f, filepath.Base(match), limit, random, results); err != nil {
-			fmt.Printf("Error scanning excel file %s: %v\n", match, err)
+			fmt.Fprintf(os.Stderr, "Error scanning excel file %s: %v\n", match, err)
 		}
 		f.Close()
 		if progress != nil {

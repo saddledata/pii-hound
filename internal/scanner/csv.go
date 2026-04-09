@@ -33,7 +33,7 @@ func (s *CSVScanner) Scan(ctx context.Context, limit int, random bool, results c
 
 	for _, match := range matches {
 		if err := s.scanFile(match, limit, random, results); err != nil {
-			fmt.Printf("Error scanning file %s: %v\n", match, err)
+			fmt.Fprintf(os.Stderr, "Error scanning file %s: %v\n", match, err)
 		}
 		if progress != nil {
 			progress.Increment()

@@ -72,7 +72,7 @@ func (s *GCSScanner) Scan(ctx context.Context, limit int, random bool, results c
 
 		for _, key := range objects {
 			if err := s.scanObject(ctx, bucket, key, limit, random, results); err != nil {
-				fmt.Printf("Error scanning gs://%s/%s: %v\n", bucketName, key, err)
+				fmt.Fprintf(os.Stderr, "Error scanning gs://%s/%s: %v\n", bucketName, key, err)
 			}
 			if progress != nil {
 				progress.Increment()

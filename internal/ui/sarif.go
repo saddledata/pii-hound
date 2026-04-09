@@ -137,6 +137,6 @@ func PrintSARIFReport(results []scanner.Result) {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(report); err != nil {
-		fmt.Printf("Error generating SARIF: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error generating SARIF: %v\n", err)
 	}
 }
