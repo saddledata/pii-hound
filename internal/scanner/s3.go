@@ -13,6 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/parquet-go/parquet-go"
+	"github.com/saddledata/pii-hound/internal/detectors"
+	"path/filepath"
 )
 
 type S3Scanner struct {
@@ -64,7 +66,10 @@ func (s *S3Scanner) Scan(ctx context.Context, limit int, random bool, results ch
 			for _, obj := range page.Contents {
 				key := *obj.Key
 				if strings.HasSuffix(key, ".csv") || strings.HasSuffix(key, ".json") || strings.HasSuffix(key, ".jsonl") ||
-					strings.HasSuffix(key, ".xlsx") || strings.HasSuffix(key, ".xlsm") || strings.HasSuffix(key, ".parquet") {
+					strings.HasSuffix(key, ".xlsx") || strings.HasSuffix(key, ".xlsm") || strings.HasSuffix(key, ".parquet") ||
+					strings.HasSuffix(key, ".txt") || strings.HasSuffix(key, ".log") || strings.HasSuffix(key, ".env") ||
+					strings.HasSuffix(key, ".yaml") || strings.HasSuffix(key, ".yml") || strings.HasSuffix(key, ".tfstate") ||
+					strings.HasSuffix(key, "docker-compose.yml") || strings.HasSuffix(key, "credentials.json") {
 					objects = append(objects, key)
 				}
 			}
@@ -136,6 +141,20 @@ func (s *S3Scanner) scanObject(ctx context.Context, client *s3.Client, bucket, k
 			return err
 		}
 		return ScanParquetFile(pf, sourceName, limit, random, results)
+	} else if strings.HasSuffix(key, ".txt") || strings.HasSuffix(key, ".log") || strings.HasSuffix(key, ".env") ||
+		strings.HasSuffix(key, ".yaml") || strings.HasSuffix(key, ".yml") || strings.HasSuffix(key, ".tfstate") ||
+		strings.Contains(key, ".env") || strings.HasSuffix(key, "docker-compose.yml") || strings.HasSuffix(key, "credentials.json") {
+
+		// 1. Check filename heuristic first
+		if m := detectors.EvaluateColumnHeuristics(sourceName, filepath.Base(key)); m != nil && m.Type == detectors.TypeFile {
+			results <- Result{
+				Source: sourceName,
+				Column: "filename",
+				Match:  *m,
+			}
+		}
+
+		return ScanTextStream(resp.Body, sourceName, limit, random, results)
 	}
 
 	return nil

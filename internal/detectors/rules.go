@@ -28,6 +28,7 @@ const (
 	TypeSecret  PiiType = "Secret/Token"
 	TypeKeyword PiiType = "Sensitive Keyword"
 	TypeName    PiiType = "Person Name"
+	TypeFile    PiiType = "High-Risk File"
 )
 
 // MatchResult stores information about a matched PII
@@ -79,6 +80,7 @@ var (
 	awsKeyRegex      = regexp.MustCompile(`\bAKIA[0-9A-Z]{16}\b`)
 	githubTokenRegex = regexp.MustCompile(`\b(ghp|gho|ghu|ghs|ghr)_[a-zA-Z0-9]{36}\b`)
 	privateKeyRegex  = regexp.MustCompile(`(?s)-----BEGIN (RSA|EC|DSA|OPENSSH) PRIVATE KEY-----`)
+	genericSecretRegex = regexp.MustCompile(`(?i)\b(password|pass|secret|apikey|api_key|token|credential)\b\s*[=:]\s*["']?[a-zA-Z0-9_\-]{4,}["']?`)
 
 	// Built-in Heuristics
 	ssnHeuristic    = regexp.MustCompile(`(?i)(\b|_)(ssn|social.*security)(\b|_)`)
@@ -88,6 +90,7 @@ var (
 	ipHeuristic     = regexp.MustCompile(`(?i)(\b|_)(ip.*addr|ip)(\b|_)`)
 	secretHeuristic = regexp.MustCompile(`(?i)(\b|_)(secret|token|api.*key|apikey|passwd|password|credential)(\b|_)`)
 	nameHeuristic   = regexp.MustCompile(`(?i)(\b|_)(first.*name|last.*name|fullname|cust.*name|customer.*name)(\b|_)`)
+	fileHeuristic   = regexp.MustCompile(`(?i)(^|/)(\.env.*|id_rsa|id_ed25519|.*\.pem|.*\.key|.*\.p12|.*\.pfx|credentials\.json|.*\.tfstate|docker-compose\.yml|sa-key\.json)$`)
 
 	// Aho-Corasick Automaton for high-speed keyword matching
 	keywordMatcher *ahocorasick.Matcher
@@ -191,6 +194,8 @@ func EvaluateColumnHeuristics(source, columnName string) *MatchResult {
 		match = &MatchResult{Type: TypeSecret, Risk: HighRisk}
 	} else if nameHeuristic.MatchString(columnName) {
 		match = &MatchResult{Type: TypeName, Risk: MediumRisk}
+	} else if fileHeuristic.MatchString(columnName) {
+		match = &MatchResult{Type: TypeFile, Risk: HighRisk}
 	}
 
 	if match != nil && IsIgnored(source, columnName, match.Type) {
@@ -239,6 +244,8 @@ func EvaluateData(source, column, data string) *MatchResult {
 	} else if githubTokenRegex.MatchString(data) {
 		match = &MatchResult{Type: TypeSecret, Risk: HighRisk}
 	} else if privateKeyRegex.MatchString(data) {
+		match = &MatchResult{Type: TypeSecret, Risk: HighRisk}
+	} else if genericSecretRegex.MatchString(data) {
 		match = &MatchResult{Type: TypeSecret, Risk: HighRisk}
 	} else if phoneRegex.MatchString(data) {
 		match = &MatchResult{Type: TypePhone, Risk: MediumRisk}

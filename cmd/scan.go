@@ -40,6 +40,7 @@ Supported Data Sources:
   - JSON Files: /path/to/data/*.json (Supports Arrays and JSON Lines)
   - Excel:      /path/to/data/*.xlsx
   - Parquet:    /path/to/data/*.parquet
+  - Text Files: /path/to/data/*.{txt,log,env,yaml,yml,tfstate}
 
 The engine samples a configurable number of rows (default 1,000) per table/file
 using a combination of column-name heuristics and regex data sampling.`,
@@ -165,6 +166,10 @@ using a combination of column-name heuristics and regex data sampling.`,
 				s = scanner.NewExcelScanner(uri)
 			} else if strings.HasSuffix(uri, ".parquet") {
 				s = scanner.NewParquetScanner(uri)
+			} else if strings.HasSuffix(uri, ".txt") || strings.HasSuffix(uri, ".log") || strings.HasSuffix(uri, ".env") ||
+				strings.HasSuffix(uri, ".yaml") || strings.HasSuffix(uri, ".yml") || strings.HasSuffix(uri, ".tfstate") ||
+				strings.Contains(uri, ".env") {
+				s = scanner.NewTextScanner(uri)
 			} else {
 				fmt.Fprintf(os.Stderr, "Warning: Unsupported URI format '%s'. Skipping...\n", uri)
 				continue

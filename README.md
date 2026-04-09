@@ -9,8 +9,9 @@ It connects to your data sources, samples records (up to a configurable limit), 
 ## 🚀 Key Features
 
 *   **Multi-Source**: Support for PostgreSQL, MySQL, Snowflake, BigQuery, SQLite, AWS S3, and Google Cloud Storage.
-*   **File Support**: Scans CSV, JSON (Array and JSON Lines), Excel (.xlsx, .xlsm), and Parquet formats.
+*   **File Support**: Scans CSV, JSON (Array and JSON Lines), Excel (.xlsx, .xlsm), Parquet, and **Plain Text** (.env, .txt, .log, .yaml) formats.
 *   **Project Configuration**: Use a `.pii-hound.yaml` file to set project-wide policies and ignore specific false positives.
+*   **High-Risk File Detection**: Automatically flags dangerous files like `.env`, `id_rsa`, and `credentials.json` by name.
 *   **Custom Rules**: Define your own PII and Secrets patterns using a simple YAML configuration with high-performance **Aho-Corasick** keyword matching.
 *   **Secrets Detection**: Sniffs out AWS Keys, GitHub Tokens, and Private Keys.
 *   **PII Detection**: Detects SSNs, Credit Cards (with Luhn validation), Emails, IP Addresses, and Phone Numbers.
@@ -91,6 +92,9 @@ The fastest way to use `pii-hound` in your CI/CD pipeline is with the official G
 ...
 # Scan multiple files (wildcards supported)
 pii-hound scan ./data/*.csv ./backups/*.xlsx ./logs/*.parquet
+
+# Scan your environment and config files
+pii-hound scan .env ./config/*.yaml docker-compose.yml
 ```
 
 ### CI/CD Integration
@@ -181,9 +185,10 @@ rules:
 `pii-hound` uses a dual-engine approach. It first checks for **suspicious column names** (e.g., `ssn`, `cc_num`, `apikey`) and then evaluates the **actual data** inside those columns.
 
 ### 🔴 High Risk
+*   **High-Risk Files**: Dangerous files flagged by name (e.g., `.env`, `id_rsa`, `sa-key.json`, `terraform.tfstate`).
 *   **Social Security Numbers (US)**: Matches standard patterns.
 *   **Credit Card Numbers**: Validated via the **Luhn Algorithm** to eliminate false positives.
-*   **Developer Secrets**: AWS Access Keys, GitHub Tokens, and RSA/SSH Private Keys.
+*   **Developer Secrets**: AWS Access Keys, GitHub Tokens, RSA/SSH Private Keys, and generic `PASSWORD=...` patterns.
 *   **Email Addresses**: Standard RFC-compliant detection.
 
 ### 🟡 Medium Risk

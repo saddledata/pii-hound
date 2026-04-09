@@ -10,7 +10,9 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/parquet-go/parquet-go"
+	"github.com/saddledata/pii-hound/internal/detectors"
 	"google.golang.org/api/iterator"
+	"path/filepath"
 )
 
 type GCSScanner struct {
@@ -61,7 +63,10 @@ func (s *GCSScanner) Scan(ctx context.Context, limit int, random bool, results c
 
 			key := attrs.Name
 			if strings.HasSuffix(key, ".csv") || strings.HasSuffix(key, ".json") || strings.HasSuffix(key, ".jsonl") ||
-				strings.HasSuffix(key, ".xlsx") || strings.HasSuffix(key, ".xlsm") || strings.HasSuffix(key, ".parquet") {
+				strings.HasSuffix(key, ".xlsx") || strings.HasSuffix(key, ".xlsm") || strings.HasSuffix(key, ".parquet") ||
+				strings.HasSuffix(key, ".txt") || strings.HasSuffix(key, ".log") || strings.HasSuffix(key, ".env") ||
+				strings.HasSuffix(key, ".yaml") || strings.HasSuffix(key, ".yml") || strings.HasSuffix(key, ".tfstate") ||
+				strings.HasSuffix(key, "docker-compose.yml") || strings.HasSuffix(key, "credentials.json") {
 				objects = append(objects, key)
 			}
 		}
@@ -130,6 +135,20 @@ func (s *GCSScanner) scanObject(ctx context.Context, bucket *storage.BucketHandl
 			return err
 		}
 		return ScanParquetFile(pf, sourceName, limit, random, results)
+	} else if strings.HasSuffix(key, ".txt") || strings.HasSuffix(key, ".log") || strings.HasSuffix(key, ".env") ||
+		strings.HasSuffix(key, ".yaml") || strings.HasSuffix(key, ".yml") || strings.HasSuffix(key, ".tfstate") ||
+		strings.Contains(key, ".env") || strings.HasSuffix(key, "docker-compose.yml") || strings.HasSuffix(key, "credentials.json") {
+
+		// 1. Check filename heuristic first
+		if m := detectors.EvaluateColumnHeuristics(sourceName, filepath.Base(key)); m != nil && m.Type == detectors.TypeFile {
+			results <- Result{
+				Source: sourceName,
+				Column: "filename",
+				Match:  *m,
+			}
+		}
+
+		return ScanTextStream(r, sourceName, limit, random, results)
 	}
 
 	return nil
