@@ -121,7 +121,7 @@ func TestEvaluateColumnHeuristics(t *testing.T) {
 		{".env", TypeFile},
 		{".env.local", TypeFile},
 		{"id_rsa", TypeFile},
-		{"secret.key", TypeFile},
+		{"secret.key", TypeSecret},
 		{"credentials.json", TypeFile},
 		{"zipcode", ""}, // Should NOT match IP
 		{"description", ""},
