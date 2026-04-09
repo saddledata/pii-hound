@@ -207,4 +207,4 @@ With Saddle Data, you can tag these columns once, and our **Execution Circuit Br
 
 ## 🤝 Contributing
 
-Pull requests are welcome! If you want to add a new detector (e.g., Passport numbers) or a new source connector (e.g., MongoDB), please open an issue first to discuss the changes.
+Pull requests are welcome! If you want to add a new detector (e.g., Passport numbers) or a new source connector (e.g. MongoDB), please open an issue first to discuss the changes.
