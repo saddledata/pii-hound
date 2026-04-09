@@ -83,11 +83,12 @@ func PrintSARIFReport(results []scanner.Result) {
 	driver := sarifDriver{
 		Name:           "pii-hound",
 		InformationUri: "https://github.com/saddledata/pii-hound",
+		Rules:          []sarifRule{},
 	}
 
 	// We create a rule for each PII type found
 	ruleMap := make(map[string]bool)
-	var sarifResults []sarifResult
+	sarifResults := []sarifResult{}
 
 	for _, res := range results {
 		ruleID := string(res.Match.Type)

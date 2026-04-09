@@ -74,7 +74,7 @@ The fastest way to use `pii-hound` in your CI/CD pipeline is with the official G
 
 ```yaml
 - name: Scan for PII
-  uses: saddledata/pii-hound@v1
+  uses: saddledata/pii-hound@v0
   with:
     path: './data'
     fail-on-pii: true
