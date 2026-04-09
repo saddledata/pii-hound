@@ -68,7 +68,7 @@ func ScanParquetFile(f *parquet.File, sourceName string, limit int, random bool,
 	heuristicFound := make(map[string]bool)
 	for _, field := range fields {
 		name := field.Name()
-		if match := detectors.EvaluateColumnHeuristics(name); match != nil {
+		if match := detectors.EvaluateColumnHeuristics(sourceName, name); match != nil {
 			heuristicFound[name] = true
 			results <- Result{
 				Source: sourceName,
@@ -161,7 +161,7 @@ func processParquetRow(row parquet.Row, fields []parquet.Field, sourceName strin
 			continue
 		}
 
-		if match := detectors.EvaluateData(strVal); match != nil {
+		if match := detectors.EvaluateData(sourceName, name, strVal); match != nil {
 			heuristicFound[name] = true
 			results <- Result{
 				Source: sourceName,

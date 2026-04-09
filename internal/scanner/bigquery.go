@@ -83,7 +83,7 @@ func (s *BigQueryScanner) scanTable(ctx context.Context, client *bigquery.Client
 
 	heuristicFound := make(map[string]bool)
 	for _, field := range md.Schema {
-		if match := detectors.EvaluateColumnHeuristics(field.Name); match != nil {
+		if match := detectors.EvaluateColumnHeuristics(table.TableID, field.Name); match != nil {
 			heuristicFound[field.Name] = true
 			results <- Result{
 				Source: table.TableID,
@@ -125,7 +125,7 @@ func (s *BigQueryScanner) scanTable(ctx context.Context, client *bigquery.Client
 			}
 
 			strVal := fmt.Sprintf("%v", val)
-			if match := detectors.EvaluateData(strVal); match != nil {
+			if match := detectors.EvaluateData(table.TableID, colName, strVal); match != nil {
 				heuristicFound[colName] = true
 				results <- Result{
 					Source: table.TableID,

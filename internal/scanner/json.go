@@ -147,7 +147,7 @@ func scanJSONRandom(decoder *json.Decoder, isArray bool, sourceName string, limi
 func processJSONRecord(obj map[string]interface{}, sourceName string, heuristicFound map[string]bool, results chan<- Result) {
 	for key, val := range obj {
 		if !heuristicFound[key] {
-			if match := detectors.EvaluateColumnHeuristics(key); match != nil {
+			if match := detectors.EvaluateColumnHeuristics(sourceName, key); match != nil {
 				heuristicFound[key] = true
 				results <- Result{
 					Source: sourceName,
@@ -164,7 +164,7 @@ func processJSONRecord(obj map[string]interface{}, sourceName string, heuristicF
 				continue
 			}
 
-			if match := detectors.EvaluateData(strVal); match != nil {
+			if match := detectors.EvaluateData(sourceName, key, strVal); match != nil {
 				heuristicFound[key] = true
 				results <- Result{
 					Source: sourceName,

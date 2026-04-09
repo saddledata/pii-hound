@@ -66,7 +66,7 @@ func (s *SnowflakeScanner) scanTable(ctx context.Context, db *sql.DB, tableName 
 
 	heuristicFound := make(map[string]bool)
 	for _, col := range columns {
-		if match := detectors.EvaluateColumnHeuristics(col); match != nil {
+		if match := detectors.EvaluateColumnHeuristics(tableName, col); match != nil {
 			heuristicFound[col] = true
 			results <- Result{
 				Source: tableName,
@@ -113,7 +113,7 @@ func (s *SnowflakeScanner) scanTable(ctx context.Context, db *sql.DB, tableName 
 				continue
 			}
 
-			if match := detectors.EvaluateData(col.String); match != nil {
+			if match := detectors.EvaluateData(tableName, colName, col.String); match != nil {
 				heuristicFound[colName] = true
 				results <- Result{
 					Source: tableName,

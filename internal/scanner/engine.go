@@ -82,7 +82,7 @@ func (e *Engine) Run(ctx context.Context) ([]Result, error) {
 // It checks column name heuristics first, then evaluates data.
 func AnalyzeString(source, column, data string) *Result {
 	// First check heuristics based on column name
-	if match := detectors.EvaluateColumnHeuristics(column); match != nil {
+	if match := detectors.EvaluateColumnHeuristics(source, column); match != nil {
 		return &Result{
 			Source: source,
 			Column: column,
@@ -95,7 +95,7 @@ func AnalyzeString(source, column, data string) *Result {
 		return nil
 	}
 
-	if match := detectors.EvaluateData(data); match != nil {
+	if match := detectors.EvaluateData(source, column, data); match != nil {
 		return &Result{
 			Source: source,
 			Column: column,

@@ -72,7 +72,7 @@ func ScanExcelStream(r io.Reader, sourceName string, limit int, random bool, res
 
 		heuristicFound := make(map[string]bool)
 		for _, header := range headers {
-			if match := detectors.EvaluateColumnHeuristics(header); match != nil {
+			if match := detectors.EvaluateColumnHeuristics(sheetSource, header); match != nil {
 				heuristicFound[header] = true
 				results <- Result{
 					Source: sheetSource,
@@ -111,7 +111,7 @@ func ScanExcelStream(r io.Reader, sourceName string, limit int, random bool, res
 					continue
 				}
 
-				if match := detectors.EvaluateData(val); match != nil {
+				if match := detectors.EvaluateData(sheetSource, header, val); match != nil {
 					heuristicFound[header] = true
 					results <- Result{
 						Source: sheetSource,

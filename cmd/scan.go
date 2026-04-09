@@ -15,8 +15,9 @@ import (
 var limit int
 var failOnPii bool
 var jsonOutput bool
+var sarifOutput bool
 var random bool
-var rulesPath string
+var configPath string
 
 var scanCmd = &cobra.Command{
 	Use:   "scan <uri> [uri...]",
@@ -53,12 +54,34 @@ using a combination of column-name heuristics and regex data sampling.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 
-		// Load custom rules if provided
-		if rulesPath != "" {
-			if err := detectors.LoadCustomRules(rulesPath); err != nil {
-				fmt.Printf("Error loading custom rules: %v\n", err)
+		// 1. Try to load config
+		if configPath == "" {
+			// Look for default config file
+			if _, err := os.Stat(".pii-hound.yaml"); err == nil {
+				configPath = ".pii-hound.yaml"
+			}
+		}
+
+		if configPath != "" {
+			if err := detectors.LoadConfig(configPath); err != nil {
+				fmt.Printf("Error loading config: %v\n", err)
 				os.Exit(1)
 			}
+		}
+
+		// 2. Override config with CLI flags if they were explicitly set
+		if cmd.Flags().Changed("limit") {
+			detectors.GlobalConfig.Limit = limit
+		} else if detectors.GlobalConfig.Limit == 0 {
+			detectors.GlobalConfig.Limit = 1000 // default
+		}
+
+		if cmd.Flags().Changed("random") {
+			detectors.GlobalConfig.Random = random
+		}
+
+		if cmd.Flags().Changed("fail-on-pii") {
+			detectors.GlobalConfig.FailOnPii = failOnPii
 		}
 
 		var allResults []scanner.Result
@@ -101,13 +124,13 @@ using a combination of column-name heuristics and regex data sampling.`,
 				continue
 			}
 
-			engine := scanner.NewEngine(s, limit)
-			engine.Random = random
-			if !jsonOutput {
+			engine := scanner.NewEngine(s, detectors.GlobalConfig.Limit)
+			engine.Random = detectors.GlobalConfig.Random
+			if !jsonOutput && !sarifOutput {
 				engine.Progress = &ui.ProgressBar{}
 			}
 
-			if !jsonOutput {
+			if !jsonOutput && !sarifOutput {
 				fmt.Printf("🐶 Sniffing %s...\n", uri)
 			}
 
@@ -119,13 +142,15 @@ using a combination of column-name heuristics and regex data sampling.`,
 			allResults = append(allResults, results...)
 		}
 
-		if jsonOutput {
+		if sarifOutput {
+			ui.PrintSARIFReport(allResults)
+		} else if jsonOutput {
 			ui.PrintJSONReport(allResults)
 		} else {
 			ui.PrintReport(allResults)
 		}
 
-		if failOnPii && len(allResults) > 0 {
+		if detectors.GlobalConfig.FailOnPii && len(allResults) > 0 {
 			os.Exit(1)
 		}
 	},
@@ -136,6 +161,9 @@ func init() {
 	scanCmd.Flags().IntVarP(&limit, "limit", "l", 1000, "Maximum number of rows to sample per table/file")
 	scanCmd.Flags().BoolVar(&failOnPii, "fail-on-pii", false, "Exit with code 1 if any PII is detected")
 	scanCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output results in JSON format")
+	scanCmd.Flags().BoolVar(&sarifOutput, "sarif", false, "Output results in SARIF format for GitHub Security")
 	scanCmd.Flags().BoolVar(&random, "random", false, "Sample rows randomly instead of the first N rows")
-	scanCmd.Flags().StringVar(&rulesPath, "rules", "", "Path to a YAML file containing custom PII rules")
+	scanCmd.Flags().StringVar(&configPath, "config", "", "Path to a YAML configuration file")
+	scanCmd.Flags().StringVar(&configPath, "rules", "", "Path to a YAML configuration file (alias for --config)")
+	scanCmd.Flags().MarkHidden("rules")
 }

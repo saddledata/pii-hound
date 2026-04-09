@@ -10,10 +10,12 @@ It connects to your data sources, samples records (up to a configurable limit), 
 
 *   **Multi-Source**: Support for PostgreSQL, MySQL, Snowflake, BigQuery, SQLite, AWS S3, and Google Cloud Storage.
 *   **File Support**: Scans CSV, JSON (Array and JSON Lines), Excel (.xlsx, .xlsm), and Parquet formats.
+*   **Project Configuration**: Use a `.pii-hound.yaml` file to set project-wide policies and ignore specific false positives.
 *   **Custom Rules**: Define your own PII and Secrets patterns using a simple YAML configuration with high-performance **Aho-Corasick** keyword matching.
 *   **Secrets Detection**: Sniffs out AWS Keys, GitHub Tokens, and Private Keys.
 *   **PII Detection**: Detects SSNs, Credit Cards (with Luhn validation), Emails, IP Addresses, and Phone Numbers.
-*   **CI/CD Ready**: Machine-readable JSON output and a `--fail-on-pii` flag to block risky deployments.
+*   **CI/CD Ready**: Machine-readable JSON and **SARIF** output, plus a `--fail-on-pii` flag to block risky deployments.
+*   **GitHub Integration**: Upload SARIF results directly to GitHub's Security tab.
 *   **Intelligence**: High-performance **Reservoir Sampling** for large files and random database sampling.
 *   **Lightning Fast**: Concurrent, streaming architecture designed to handle gigabytes of data without high memory usage.
 
@@ -78,6 +80,13 @@ Block your pipeline if PII is detected in your export folder:
 pii-hound scan "./exports/*.csv" --fail-on-pii
 ```
 
+### GitHub Actions (SARIF)
+Generate a SARIF report to see PII findings in your PRs and Security tab:
+```bash
+pii-hound scan ./data --sarif > pii-results.sarif
+```
+Then use the `github/codeql-action/upload-sarif` action to upload the results.
+
 ### Custom Rules
 Define proprietary PII patterns or sensitive keywords in a `rules.yaml` file:
 ```yaml
@@ -97,6 +106,29 @@ Then run the scan with the `--rules` flag:
 pii-hound scan ./data.csv --rules rules.yaml
 ```
 
+### Configuration & Ignore
+`pii-hound` automatically looks for a `.pii-hound.yaml` file in your current directory. You can use this to set global limits, random sampling, and ignore specific files or columns that produce false positives.
+
+Example `.pii-hound.yaml`:
+```yaml
+limit: 500
+random: true
+fail_on_pii: true
+
+# Ignore specific false positives
+ignore:
+  - source: "legacy_data.csv"
+    column: "fake_ssn"
+  - source: "test_users.json"
+    type: "Email Address"
+  - source: "logs/*" # Use wildcards for sources
+
+# Define custom rules inline
+rules:
+  - name: "Internal ID"
+    regex: "INT-[0-9]{4}"
+```
+
 ---
 
 ## ⚙️ CLI Flags
@@ -106,8 +138,10 @@ pii-hound scan ./data.csv --rules rules.yaml
 | `--limit` | `-l` | Maximum rows/objects to sample per table/file (default: 1000). |
 | `--random` | | Sample rows randomly (uses Reservoir Sampling for files). |
 | `--json` | | Output report in machine-readable JSON format. |
+| `--sarif` | | Output report in SARIF format for GitHub Security. |
 | `--fail-on-pii` | | Exit with code 1 if any PII or Secrets are detected. |
-| `--rules` | | Path to a YAML file containing custom PII rules. |
+| `--config` | | Path to a YAML configuration file. |
+| `--rules` | | Path to a YAML configuration file (legacy alias for --config). |
 
 ---
 

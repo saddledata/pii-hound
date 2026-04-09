@@ -66,7 +66,7 @@ func ScanCSVStream(r io.Reader, sourceName string, limit int, random bool, resul
 
 	heuristicFound := make(map[string]bool)
 	for _, header := range headers {
-		if match := detectors.EvaluateColumnHeuristics(header); match != nil {
+		if match := detectors.EvaluateColumnHeuristics(sourceName, header); match != nil {
 			heuristicFound[header] = true
 			results <- Result{
 				Source: sourceName,
@@ -151,7 +151,7 @@ func processCSVRecord(record []string, headers []string, sourceName string, heur
 			continue
 		}
 
-		if match := detectors.EvaluateData(value); match != nil {
+		if match := detectors.EvaluateData(sourceName, header, value); match != nil {
 			heuristicFound[header] = true
 			results <- Result{
 				Source: sourceName,

@@ -77,7 +77,7 @@ func TestEvaluateData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := EvaluateData(tt.data)
+			got := EvaluateData("test", "col", tt.data)
 			if tt.wantType == "" {
 				if got != nil {
 					t.Errorf("EvaluateData() = %v, want nil", got.Type)
@@ -124,7 +124,7 @@ func TestEvaluateColumnHeuristics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.columnName, func(t *testing.T) {
-			got := EvaluateColumnHeuristics(tt.columnName)
+			got := EvaluateColumnHeuristics("test", tt.columnName)
 			if tt.wantType == "" {
 				if got != nil {
 					t.Errorf("EvaluateColumnHeuristics(%v) = %v, want nil", tt.columnName, got.Type)

@@ -1,0 +1,16 @@
+limit: 10
+random: true
+fail_on_pii: false
+
+rules:
+  - name: "Saddle Project ID"
+    type: "PII"
+    risk: "HIGH"
+    regex: "SDL-[0-9]{4}-[A-Z]{2}"
+    heuristic: "saddle_id|project_code"
+
+ignore:
+  - source: "test_custom.json"
+    column: "saddle_id"
+  - source: "test.csv"
+    type: "Email Address"

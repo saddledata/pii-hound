@@ -68,7 +68,7 @@ func (s *PostgresScanner) scanTable(ctx context.Context, db *sql.DB, tableName s
 
 	heuristicFound := make(map[string]bool)
 	for _, col := range columns {
-		if match := detectors.EvaluateColumnHeuristics(col); match != nil {
+		if match := detectors.EvaluateColumnHeuristics(tableName, col); match != nil {
 			heuristicFound[col] = true
 			results <- Result{
 				Source: tableName,
@@ -119,7 +119,7 @@ func (s *PostgresScanner) scanTable(ctx context.Context, db *sql.DB, tableName s
 			}
 
 			data := string(col)
-			if match := detectors.EvaluateData(data); match != nil {
+			if match := detectors.EvaluateData(tableName, colName, data); match != nil {
 				heuristicFound[colName] = true // treat as found to skip subsequent rows for this column
 				results <- Result{
 					Source: tableName,
