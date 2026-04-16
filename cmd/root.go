@@ -9,7 +9,8 @@ import (
 
 var Version = "dev"
 
-var rootCmd = &cobra.Command{
+// RootCmd is the base command for pii-hound
+var RootCmd = &cobra.Command{
 	Use:     "pii-hound",
 	Version: Version,
 	Short:   "pii-hound sniffs out unprotected PII in your databases and files",
@@ -19,7 +20,7 @@ to sniff out unprotected Personally Identifiable Information (PII) in databases 
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

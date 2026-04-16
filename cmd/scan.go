@@ -237,8 +237,9 @@ using a combination of column-name heuristics and regex data sampling.`,
 }
 
 func init() {
-	rootCmd.AddCommand(scanCmd)
-	scanCmd.Flags().IntVarP(&limit, "limit", "l", 1000, "Maximum number of rows to sample per table/file")
+        RootCmd.AddCommand(scanCmd)
+        scanCmd.Flags().IntVarP(&limit, "limit", "l", 1000, "Maximum number of rows to sample per table/file")
+
 	scanCmd.Flags().BoolVar(&failOnPii, "fail-on-pii", false, "Exit with code 1 if any PII is detected")
 	scanCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output results in JSON format")
 	scanCmd.Flags().BoolVar(&sarifOutput, "sarif", false, "Output results in SARIF format for GitHub Security")
